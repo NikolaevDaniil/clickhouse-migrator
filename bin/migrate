@@ -1,0 +1,44 @@
+#!/usr/bin/env php
+<?php
+
+require_once __DIR__ . '/../vendor/autoload.php';
+
+use Symfony\Component\Console\Application;
+use App\Command\CreateMigrationCommand;
+use App\Command\MigrateUpCommand;
+use App\Command\MigrateDownCommand;
+use App\Command\MigrateToCommand;
+use App\Command\MigrateStatusCommand;
+use App\MigrationManager;
+use ClickHouseDB\Client;
+
+// Конфигурация подключения к ClickHouse
+$config = [
+    'host' => getenv('CLICKHOUSE_HOST') ?: 'localhost',
+    'port' => getenv('CLICKHOUSE_PORT') ?: 8123,
+    'username' => getenv('CLICKHOUSE_USER') ?: 'default',
+    'password' => getenv('CLICKHOUSE_PASSWORD') ?: '',
+    'database' => getenv('CLICKHOUSE_DATABASE') ?: 'default',
+];
+
+$client = new Client($config);
+
+// Путь к директории с миграциями и имя таблицы миграций
+$migrationsDir = __DIR__ . '/../migrations';
+$tableName = 'schema_migrations';
+
+// Шаблон миграции
+$migrationTemplate = __DIR__ . '/../migration_template.php.tpl';
+
+$migrationManager = new MigrationManager($client, $migrationsDir, $tableName);
+
+$application = new Application();
+
+// Регистрация команд
+$application->add(new CreateMigrationCommand($migrationTemplate, $migrationsDir));
+$application->add(new MigrateUpCommand($migrationManager));
+$application->add(new MigrateDownCommand($migrationManager));
+$application->add(new MigrateToCommand($migrationManager));
+$application->add(new MigrateStatusCommand($migrationManager));
+
+$application->run();

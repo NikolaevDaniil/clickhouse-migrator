@@ -1,0 +1,34 @@
+#!/usr/bin/env php
+<?php
+
+require_once __DIR__ . '/vendor/autoload.php';
+
+use Symfony\Component\Console\Application;
+use App\Command\CreateMigrationCommand;
+use App\Command\MigrateUpCommand;
+use App\Command\MigrateDownCommand;
+use App\Command\MigrateToCommand;
+use App\Command\MigrateStatusCommand;
+use App\Database\DatabaseConnection;
+use App\Database\MigrationRepository;
+use App\MigrationManager;
+
+$config = require __DIR__ . '/config/migration.php';
+
+$dbConfig = $config['database'];
+$db = new DatabaseConnection($dbConfig);
+$repository = new MigrationRepository($db);
+$migrationsDir = $config['migrations_directory'];
+$migrationTemplate = $config['migration_template'];
+
+$migrationManager = new MigrationManager($db, $repository);
+
+$application = new Application();
+
+$application->add(new CreateMigrationCommand($migrationTemplate, $migrationsDir));
+$application->add(new MigrateUpCommand($migrationManager, $migrationsDir));
+$application->add(new MigrateDownCommand($migrationManager, $migrationsDir));
+$application->add(new MigrateToCommand($migrationManager, $migrationsDir));
+$application->add(new MigrateStatusCommand($migrationManager, $migrationsDir));
+
+$application->run();
